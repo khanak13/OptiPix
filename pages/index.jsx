@@ -18,7 +18,7 @@ export default function Home() {
       {/* Content */}
       <div className="relative z-10 max-w-2xl mx-auto px-6">
         <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">
-          Image Resizer & Optimizer
+          OptiPix
         </h1>
 
         <p className="text-gray-300 text-lg mb-8">
