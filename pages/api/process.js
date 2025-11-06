@@ -8,44 +8,45 @@ export const config = {
   },
 };
 
-export default async function handler(req, res) {
+export default function handler(req, res) {
   if (req.method !== "POST") {
-    res.status(405).end();
-    return;
+    return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  const form = formidable({});
+  const form = formidable({ multiples: false });
+
   form.parse(req, async (err, fields, files) => {
     if (err) {
-      res.status(500).json({ error: "Failed to parse file" });
-      return;
+      return res.status(500).json({ error: "Error parsing form data" });
     }
 
+    const file = files.file;
+    const width = Number(fields.width);
+    const height = Number(fields.height);
+    const quality = Number(fields.quality);
+
+    const buffer = fs.readFileSync(file.filepath);
+    const originalSize = buffer.length;
+
     try {
-      const file = files.file[0];
-      const width = parseInt(fields.width[0]);
-      const height = parseInt(fields.height[0]);
-      const quality = parseInt(fields.quality[0]);
-
-      const inputBuffer = fs.readFileSync(file.filepath);
-
-      // Resize + optimize with Sharp
-      const outputBuffer = await sharp(inputBuffer)
-        .resize({ width, height, fit: "cover" })
+      const resultBuffer = await sharp(buffer)
+        .resize({
+          width: width,
+          height: height,
+          fit: "inside",          // ✅ no cropping
+          withoutEnlargement: true
+        })
         .jpeg({ quality })
         .toBuffer();
 
-      const metrics = {
-        originalSize: inputBuffer.length,
-        newSize: outputBuffer.length,
-      };
+      const newSize = resultBuffer.length;
 
-      res.setHeader("x-metrics", JSON.stringify(metrics));
-      res.setHeader("Content-Type", "image/jpeg");
-      res.send(outputBuffer);
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: "Processing failed" });
+      res.setHeader("x-metrics", JSON.stringify({ originalSize, newSize }));
+      res.status(200).send(resultBuffer);
+
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ error: "Image processing failed." });
     }
   });
 }
